@@ -1,2 +1,2 @@
-# note
-Some Notes And Ideas
+# Some Notes And Ideas
+
