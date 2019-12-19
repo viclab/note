@@ -1,144 +1,112 @@
-#include <cinttypes>
-#include <cstdlib>
-#include <set>
-#include <unordered_map>
+#include "timeout_queue.h"
 
-#include <iostream>
-#include <algorithm>
-#include <chrono>
-#include <functional>
 #include <random>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <ctime>
-#include <errno.h>
-#include <sys/time.h>
-#include <unistd.h>
+#include <iostream>
 
-class Timer2 final {
-    using TimerCallback = std::function<void()>;
- public:
-    Timer2() {};
-    ~Timer2() {};
+#define ERR_LOG(p1,p2,p3,p4,format,...) fprintf(stdout, format, __VA_ARGS__)
 
-    int GenID() {
-        ++id_;
-        if (id_ == 0)
+uint32_t TimeoutQueue::Add(const Task& task, uint64_t expire_time, uint32_t interval_time)
+{
+    uint32_t new_id = GenerateID();
+    if (timer_id_index_.insert({new_id, expire_time}).second == false)
+    {
+        ERR_LOG(0, 0, 0, "", "timer_id_index_ insert new_id(%u) error", new_id);
+        return 0;
+    }
+
+    if (timer_queue_.insert({new_id, interval_time, expire_time, task}).second == false)
+    {
+        ERR_LOG(0, 0, 0, "", "timer_queue_ insert new_id(%u) error", new_id);
+        return 0;
+    }
+    return new_id;
+}
+
+uint32_t TimeoutQueue::Add(Task&& task, uint64_t expire_time, uint32_t interval_time)
+{
+    uint32_t new_id = GenerateID();
+    if (timer_id_index_.insert({new_id, expire_time}).second == false)
+    {
+        ERR_LOG(0, 0, 0, "", "timer_id_index_ insert new_id(%u) error", new_id);
+        return 0;
+    }
+
+    if (timer_queue_.insert({new_id, interval_time, expire_time, std::move(task)}).second == false)
+    {
+        ERR_LOG(0, 0, 0, "", "timer_queue_ insert new_id(%u) error", new_id);
+        return 0;
+    }
+
+    return new_id;
+}
+
+bool TimeoutQueue::Cancel(uint32_t time_id)
+{
+    auto iter = timer_id_index_.find(time_id);
+    if (iter == timer_id_index_.end())
+    {
+        return false;
+    }
+
+    timer_queue_.erase({time_id, 0, iter->second, nullptr});
+    timer_id_index_.erase(iter);
+    return true;
+}
+
+uint32_t TimeoutQueue::TimeOut(uint64_t now)
+{
+    uint32_t count = 0;
+    while (!timer_queue_.empty())
+    {
+        auto iter = timer_queue_.begin();
+        if (iter->expire_time > now)
         {
-            ++id_;
-        }
-        return id_;
-    }
-    void AddTimer(uint32_t interval, uint64_t abs_time, TimerCallback cb, bool is_loop, void* extend) {
-        uint32_t id = GenID();
-        id_index_.insert({id, interval + abs_time});
-        timer_set_.insert({id, interval, interval + abs_time, is_loop, cb, extend});
-    }
-
-    void RemoveTimer(const uint32_t timer_id) {
-        auto it = id_index_.find(timer_id);
-        if (it == id_index_.end()) {
-            return;
+            break;
         }
 
-        timer_set_.erase({timer_id, 0, it->second, false, nullptr, nullptr});
-        
-    }
+        // 拷贝一份出来后先删除定时器，防止task中有逻辑对这个定时器有操作
+        Timer tmp = (*iter);
+        timer_id_index_.erase(iter->seq_id);
+        timer_queue_.erase(iter);
 
-    void PopTimeout() {
-        if (timer_set_.empty()) {
-            return;
-        }
+        tmp.task();
+        ++count;
 
-        id_index_.erase(timer_set_.begin()->id_);
-        timer_set_.erase(timer_set_.begin());
-    }
+        // 是循环定时器，重新加进去
+        if (tmp.interval_time > 0)
+        {
+            tmp.expire_time += tmp.interval_time;
 
-    int OnUpdate(uint64_t end) {
-        int n = 0;
-        while (GetNextTimeout() == 0 && GetTimestampMS() <= end) {
-            auto it = timer_set_.begin();
-            it->cb_();
-            PopTimeout();
-            ++n;
-        }
-    }
-
-    const int GetNextTimeout() const {
-        if (timer_set_.empty()) {
-            return -1;
-        }
-
-        int next_timeout = 0;
-        auto it = timer_set_.begin();
-        uint64_t now_time = GetTimestampMS();
-        if (it->abs_time_ > now_time) {
-            next_timeout = (int)(it->abs_time_ - now_time);
-        }
-        return next_timeout;
-    }
-
-    const bool empty() {
-         return timer_set_.empty();
-    }
-
-    static const uint64_t GetTimestampMS() {
-        auto now_time = std::chrono::system_clock::now();
-        uint64_t now = (std::chrono::duration_cast<std::chrono::milliseconds>(now_time.time_since_epoch())).count();
-        return now;
-    }
-
-    static const uint64_t GetSteadyClockMS() {
-        auto now_time = std::chrono::steady_clock::now();
-        uint64_t now = (std::chrono::duration_cast<std::chrono::milliseconds>(now_time.time_since_epoch())).count();
-        return now;
-    }
-
-    static void MsSleep(const int time_ms) {
-        timespec t;
-        t.tv_sec = time_ms / 1000;
-        t.tv_nsec = (time_ms % 1000) * 1000000;
-        int ret = 0;
-        do {
-            ret = ::nanosleep(&t, &t);
-        } while (ret == -1 && errno == EINTR);
-    }
-
-    size_t TimerSize() { return timer_set_.size(); }
-    uint32_t GetMaxTimerID() { return id_; }
-
- private:
-    struct TimerObj {
-        uint32_t id_;
-        uint32_t interval_;
-        uint64_t abs_time_;
-        bool is_loop_;
-        TimerCallback cb_;
-        void* extend_;
-
-        void SetTimerID(uint32_t timer_id) {
-            id_ = timer_id;
-        }
-
-        friend bool operator <(const TimerObj& l, const TimerObj& r) {
-            if (l.abs_time_ == r.abs_time_)
+            if (timer_id_index_.insert({tmp.seq_id, tmp.expire_time}).second)
             {
-                return l.abs_time_ < r.abs_time_;
+                if (timer_queue_.insert(tmp).second == false)
+                {
+                    ERR_LOG(0, 0, 0, "", "timer_queue_ insert interval id(%u) error", tmp.seq_id);
+                }
             }
-            return l.abs_time_ < r.abs_time_;
+            else
+            {
+                ERR_LOG(0, 0, 0, "", "timer_id_index_ insert interval id(%u) error", tmp.seq_id);
+            }
         }
     };
 
-    std::unordered_map<uint32_t, uint64_t> id_index_;
-    std::set<TimerObj> timer_set_;
-    uint32_t id_ = 0;
-};
+    return count;
+}
 
+uint32_t TimeoutQueue::GenerateID()
+{
+    ++base_id_;
+    if (base_id_ == 0)
+    {
+        ++base_id_;
+    }
+    return ++base_id_;
+}
 
 int main()
 {
-    Timer2 s_mgr;
+    TimeoutQueue s_mgr;
 
     std::default_random_engine rand;
     std::uniform_int_distribution<> range_interval(1, 500), range_loop(0, 1);
@@ -155,10 +123,7 @@ int main()
 
         if (run_time <= 500)
         {
-            s_mgr.AddTimer(range_interval(rand), now, [&]() {
-                    //std::cout << "TIMEOUT[" << s_mgr.TimerSize() << "]:" << "now:" << time(nullptr) << std::endl;
-                    //std::cout << "TIMEOUT[" << s_mgr.TimerSize() << "|" << s_mgr.TimerSize() / (time(nullptr) - start) << "]:" << std::endl;
-                    }, range_loop(rand), nullptr);
+            s_mgr.Add([&]() { }, range_interval(rand) + now, 0);
         }
         else if (run_time <= 1000)
         {
@@ -166,7 +131,7 @@ int main()
             {
                 t1 = s_mgr.TimerSize();
             }
-            s_mgr.OnUpdate(start + 1000);
+            s_mgr.TimeOut(start + 1000);
             //std::uniform_int_distribution<> range_delid(0, s_mgr.TimerSize());
             //s_mgr.RemoveTimer(range_delid(rand));
         }
@@ -176,7 +141,7 @@ int main()
             {
                 t2 = s_mgr.TimerSize();
             }
-            std::cout << "[" << n << "]: " << "timer total size: " << t1 << ", add: " << t1 - t2_old << "/500ms, Del: " << t1 - t2 << "/500ms, max_id:" <<  s_mgr.GetMaxTimerID() << std::endl;
+            std::cout << "[" << n << "]: " << "timer total size: " << t2 << ", add: " << t1 - t2_old << "/500ms, Del: " << t1 - t2 << "/500ms" << std::endl;
             start = now;
             ++n;
             t1_old = t1, t2_old = t2;
@@ -186,4 +151,5 @@ int main()
 
     return 0;
 }
+
 
