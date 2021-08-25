@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2021-08-25T15:54:31.708Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36" etag="-h6ahEvRQ1BYZN-OGwPN" version="14.9.8" type="github">
+<mxfile host="app.diagrams.net" modified="2021-08-25T15:57:25.735Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36" etag="CVJRDmamxJtCYEZBL6t5" version="14.9.8" type="github">
   <diagram id="WL8thAtnPLQq1xH2uDU1" name="Page-1">
-    <mxGraphModel dx="1999" dy="2262" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1999" dy="2362" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -416,7 +416,7 @@
         <mxCell id="aCSwMf_emgxnf5cf1_4d-18" value="&lt;b&gt;...&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;dashed=1;" vertex="1" parent="1">
           <mxGeometry x="1083" y="-949" width="40" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="aCSwMf_emgxnf5cf1_4d-20" value="&lt;b&gt;集群整体负载过低时缩容&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;dashed=1;" vertex="1" parent="1">
+        <mxCell id="aCSwMf_emgxnf5cf1_4d-20" value="&lt;b&gt;缩容前&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;dashed=1;" vertex="1" parent="1">
           <mxGeometry x="880" y="-1014" width="138" height="20" as="geometry" />
         </mxCell>
         <mxCell id="aCSwMf_emgxnf5cf1_4d-21" value="" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;" vertex="1" parent="1">
@@ -508,6 +508,12 @@
             <mxPoint x="1534" y="-905" as="sourcePoint" />
             <mxPoint x="1569" y="-905" as="targetPoint" />
           </mxGeometry>
+        </mxCell>
+        <mxCell id="aCSwMf_emgxnf5cf1_4d-49" value="c" style="shape=umlDestroy;whiteSpace=wrap;html=1;strokeWidth=3;fillColor=#d80073;strokeColor=#A50040;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="-870" width="17" height="17" as="geometry" />
+        </mxCell>
+        <mxCell id="aCSwMf_emgxnf5cf1_4d-50" value="c" style="shape=umlDestroy;whiteSpace=wrap;html=1;strokeWidth=3;fillColor=#d80073;strokeColor=#A50040;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="-894" width="17" height="17" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
